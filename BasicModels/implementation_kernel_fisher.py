@@ -1,7 +1,9 @@
 # coding: utf-8
 
+import math
 import numpy as np
 import scipy.io
+from scipy.linalg.misc import norm
 
 
 class MatUtil():
@@ -40,6 +42,11 @@ class Fisher(object):
         self.train()
         self.gc()
 
+    @staticmethod
+    def kernel(x1, x2):
+        gamma = 1
+        return math.exp(-gamma * norm(x1 - x2, 2) ** 2)
+
     def analyse_data(self):
         self.dim = self.data.shape[1]
         self.data0 = self.data[self.label == 0]
@@ -61,6 +68,46 @@ class Fisher(object):
 
     def train(self):
         self.analyse_data()
+
+        _n0 = self.data0.shape[0]
+        _n1 = self.data1.shape[0]
+        _n = _n0 + _n1
+        _d = 1
+        _lambda = 0
+        _t = 0
+        _k = 0
+        Phi_x_1n_x_s1 = np.array([_n, 1])
+        for i in range(_n):
+            tmp = 0
+            for j in range(_n0):
+                tmp += self.kernel(self.data[i], self.data0[j])
+            Phi_x_1n_x_s1[i, 0] = tmp / _n0
+        Phi_x_1n_x_s2 = np.array([_n, 1])
+        for i in range(self.data.shape[0]):
+            tmp = 0
+            for j in range(_n1):
+                tmp += self.kernel(self.data[i], self.data1[j])
+            Phi_x_1n_x_s2[i, 0] = tmp / _n1
+        _Gamma = np.array([self.data.shape[0], 1])
+        for i in range(_n):
+            _Gamma[i, 0] = Phi_x_1n_x_s1 - Phi_x_1n_x_s2
+        _N1 = np.array([_n, _n])
+        for r in range(_n0):
+            _N1_l = np.array([_n])
+            for i in range(_n):
+                _N1_l[i, 0] = self.kernel(self.data[i], self.data0[r])
+            _N1 += _N1_l * _N1_l.T
+        _N2 = np.array([_n, _n])
+        for r in range(_n1):
+            _N2_l = np.array([_n])
+            for i in range(_n):
+                _N2_l[i, 0] = self.kernel(self.data[i], self.data0[r])
+            _N2 += _N2_l * _N2_l.T
+        _N = _N1 + _N2
+        _alpha = _d / _lambda * np.dot(np.linalg.inv(_N + _t * _k), _Gamma)
+        _b = 
+
+
         u0, conv0 = self.calc_avg_conv(self.data0)
         u1, conv1 = self.calc_avg_conv(self.data1)
         p0 = self.data0.shape[0] / self.data.shape[0]
